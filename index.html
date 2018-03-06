@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<title>SMS Reader</title>
+
+		<style>
+			body {
+				display: grid;
+				grid-template-areas: 
+				"menu"
+				"chat";
+				grid-template-rows: 30vh auto;
+
+				font-family: Helvetica, Arial, sans-serif;
+				word-break: break-all;
+				
+				margin: 0;
+				padding-top: 3rem;
+
+				max-width: 100vw;
+				width: 100%;
+				max-height: calc(100vh - 3rem);
+				height: 100%;
+
+				background-color: whitesmoke;
+			}
+
+			header {
+				position: fixed;
+				width: 100%;
+
+				padding: 0 0.5rem;
+				margin-bottom: .5rem;
+
+				background-color: white;
+				box-shadow: 0 5px 5px rgba(0,0,0, 0.2);
+
+				font-size: 20px;
+				line-height: 3rem;
+				
+				color: rgba(0,0,0, 0.7);
+			}
+
+			.menu-list {
+				grid-area: menu;
+
+				overflow-y: auto;
+				
+				margin: 0;
+				padding: 0;
+				
+				list-style-type: none;
+				background-color: rgba(0,0,0, 0.1);
+			}
+			.menu-list li:hover {
+				background-color: #ccc;
+			}
+			.menu-list li.is-active {
+				background-color: #bbb;
+			}
+			.menu-list > li > a {
+				padding: .8em;
+				display: block;
+				cursor: pointer;
+			}
+		
+
+			.chat {
+				grid-area: chat;
+				
+				overflow-y: auto;
+
+				display: grid;
+			}
+	
+			.box {
+				margin: .5rem;
+				padding:  1rem;
+				
+				border-radius: 20px;
+				background-color: lightgray;
+			}
+
+			time {
+				font-weight: lighter;
+			}
+
+			.has-text-right > p {
+				text-align: right;
+			}
+			
+			.go-up {
+				position: fixed;
+
+				bottom: 20px;
+				left: 90%;
+
+				width: 30px;
+				height: 30px;
+
+				z-index: 100;
+				
+				border: none;
+				outline: none;
+	
+				line-height: 30px;
+				border-radius: 50%;
+			}
+
+			@media (min-width: 728px) {
+				body {
+					grid-template-areas: 
+					"menu chat";
+					grid-template-columns: 300px auto;
+					grid-template-rows: 1fr auto;
+				}
+
+				.go-up {
+					display: none;
+				}
+			}
+
+
+			header > a {
+				color: grey;
+				text-decoration: none;
+			}
+		</style>
+	</head>
+
+	<body>
+		<header id="name">Placeholder for name</header>
+		
+		<ul class="menu-list" id="contacts">
+		</ul>
+
+		<div class="chat" id="chatBody">
+			<div class="box">
+				<p>Example Message here</p>
+				<time datetime="2016-1-1">11:09 PM - 1 Jan 2016</time>
+			</div>
+			<div class="box">
+				<p>Another one here</p>
+				<time datetime="2016-1-1">09:11 AM - 1 Jun 2017</time>
+			</div>
+		</div>
+
+		<button class="go-up" onclick="goUp()">▲</button>
+
+		<script>
+			const LANG = "en";
+
+			this.loading = true;
+			this.chatId = null;
+
+			// Scroll top
+			function goUp(){
+				document.body.scrollTop = 0;
+				document.documentElement.scrollTop = 0;
+			}
+
+			// Toggles between threads, it's dirty and ugly way as thread gets parsed each time. 
+			function switchChat(id) {
+				if (id === this.chatId) return;
+
+				toggleActive(id);
+
+				this.chatBody = data.filter(el => el.number === id)[0];
+
+				if (this.chatBody.name) {
+					document.getElementById('name').innerHTML = 
+					this.chatBody.name + " | " + `<a href="tel:${ this.chatBody.number }">${this.chatBody.number}</a>`;
+				} else {
+					document.getElementById('name').innerHTML = `<a href="tel:${ this.chatBody.number }">${this.chatBody.number}</a>`;
+				}
+
+				let chat = document.getElementById('chatBody');
+				chat.innerHTML = '';
+
+
+
+				this.chatBody.conversations.forEach(function(msg) {
+
+
+					let template = `
+						<p>${ parseSMS(msg.body, msg.encoding) }</p>
+						<time datetime="${ msg.timestamp }">${ parseDate(msg.timestamp) }</time>
+								`;
+					let div = document.createElement('div')
+					div.classList.toggle('box');
+					if (msg.type == 'sent') div.classList.toggle('has-text-right');
+					div.innerHTML = template;
+
+					chat.appendChild(div)
+
+				});
+
+			}
+
+			// Convert into readable date structure
+			function parseDate(d) {
+				date = new Date(d*1000);
+				
+				let mL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+				let mS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+
+				if (LANG == 'lt') mS = ['Sau','Vas','Kov','Bal','Geg','Bir','Lie','Rgp','Rgs','Spl','Lap','Grd'] // Months in Lithuanian
+
+				// Choose which months to use here
+				let months = mS;
+
+
+				let year = date.getFullYear();
+				let month = months[date.getMonth()];
+				let day = date.getDate();
+				let hour = date.getHours();
+				let minute = date.getMinutes();
+				let sec = date.getSeconds();
+
+				return year + ' ' + month + ' ' + day + ' - ' + hour + ':' + minute + ':' + sec;
+			}
+
+			// As some messages are Base64 encoded, we need to decode them. 
+			let parseSMS = (s, e) => e === "base64" ? b64DecodeUnicode(s) : s;
+			function b64DecodeUnicode(str) {
+				return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+					return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+				}).join(''))
+			}
+
+			// Load data into app
+			function addConversations(name, id, len) {
+				let menu = document.getElementById('contacts');
+				let a = document.createElement('a');
+				a.appendChild( document.createTextNode( (name || id) + ' (' + len + ')' ) );
+				a.setAttribute('id', id);
+				a.setAttribute('onclick', `switchChat(this.id)`);
+				let li = document.createElement('li');
+				li.appendChild(a);
+				menu.appendChild(li);
+			}
+
+			// Toggle 'is-active' class on active contact
+			function toggleActive(id) {
+				if (this.chatId) {
+					let old = document.getElementById(this.chatId).parentNode;
+					old.classList.remove('is-active');
+				}
+				this.chatId = id;
+				let current = document.getElementById(this.chatId).parentNode;
+				current.classList.add('is-active');
+			}
+
+			// Load data.json contents using Fetch API and do some sorting
+			fetch('./data.json').then(function(res) {
+				return res.json();
+			}).then(function (res){
+				data = res;
+
+				data.sort( (a,b) => { 
+					a = a.name.toLowerCase();
+					b = b.name.toLowerCase();
+
+					if (!a) return 1;
+					if (!b) return -1;
+
+					if (a===b) return 0;
+
+					if (a < b) return -1;
+					if (a > b) return 1;
+					
+					return 0; });
+
+				data.forEach(el => addConversations( el.name, el.number, el.conversations.length ));
+				this.loading = false;
+				switchChat(data[Math.round(Math.random()*100, 0)].number);
+			})
+		</script>
+	</body>
+</html>

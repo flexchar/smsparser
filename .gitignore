@@ -1,0 +1,4 @@
+# Ignore private and output files
+*.xml
+*.db
+*.json
